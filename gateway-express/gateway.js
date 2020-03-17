@@ -4,7 +4,7 @@ const request = require('request');
 const app = new express();
 const PORT = 5000;
 const RESTSERVERPORT = 8080;
-// Body parser reqest
+// Body parser request
 app.use(express.json({ extended: false}));
 
 // @route GET '/rest'
@@ -26,50 +26,45 @@ app.get('/rest', (req, res) => {
             }
         });
     } catch (err) {
-        res.status(500).send('Rest Server Error');
+        res.status(500).send('Server Error');
     }
 });
+
 // @route  POST '/rest'
 // @desc   Stage Two: issue n requests to restserver
 app.post('/rest', async (req, res) => {
     // Extract parameter from request body
     const numRequests = req.body.numRequests;
-    
-    try {
-        var totalTime = 0;
+    let responseTime = [];
+    let requests = [];
+    // Declare a promise function
+    function issueSingleRequest(responseTime) {
         const options = {
             url: `http://localhost:${RESTSERVERPORT}/request`,
             method: 'GET'
         };
-        // Send request to rest server
-        for(let i = 0; i < numRequests; i++) {
-            try {
-                console.log(`This is ${i}th request`);
-                totalTime  += await JSON.parse(request(options).body).data;
-                console.log(`Current time is ${totalTime}`);
-                /*
-                request(options, async (error, response, body) => {
-                    if (error)
-                        console.error(error);
-                    // Check response status code
-                    if (response.statusCode === 200) {
-                        totalTime = totalTime + parseInt(JSON.parse(body).data);
-                    }
-                    ;
-                    console.log(`Current time is ${totalTime}`);
-                });
-                */
-            } catch(err) {
-                res.status(500).send('Rest Server Error');
-            }
-        }
-        // Response to client
+        return new Promise((resolve, reject) => {
+            request(options, (error, response, body) => {
+                if(error) reject('error');
+                else {
+                    responseTime.push(JSON.parse(body).data);
+                    resolve();
+                }
+            });
+        });
+    };
+    for(let i = 0; i < numRequests; i++) {
+        requests.push(issueSingleRequest(responseTime));
+    };
+    // Issue n requests in parallell
+    Promise.all(requests).then(() => {
+        let totalTime = responseTime.reduce((a, b)=> {return a + b;}, 0);
+        // Test
+        //console.log(responseTime);
         res.set({'Content-Type': 'text/html'});
-        res.send(`I made ${numRequests} requests. It took ${totalTime} milliseconds.`);
-    } catch(err) {
-        console.log(err.message);
-        res.status(500).send('Rest Server Error');
-    }
+        res.send(`I made ${numRequests} requests and it took ${totalTime} milliseconds`);
+    }).catch((error) => res.status(500).send('Server Error'))
+    
 });
 
 app.listen(PORT, console.log(`Gateway is listening on port: ${PORT}`));
