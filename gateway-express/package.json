@@ -1,0 +1,9 @@
+{
+    "scripts": {
+        "start": "node gateway"
+    },
+    "dependencies": {
+        "express": "^4.17.1",
+        "request": "^2.88.2"
+    }
+}
