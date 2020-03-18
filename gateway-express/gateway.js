@@ -18,12 +18,9 @@ app.get('/rest', (req, res) => {
         request(options, (error, response, body) => {
             if(error) console.error(error);
             const info = JSON.parse(body);
+            // Set response type and response body
             res.set({'Content-Type': 'text/html'});
-            if(response.statusCode !== 200) {
-                res.status(500).send(`${info.message}`);
-            }else {
-                res.send(`I RESTed for ${info.data} time units.`)
-            }
+            res.send(`I RESTed for ${info.data} time units.`);
         });
     } catch (err) {
         res.status(500).send('Server Error');
@@ -31,8 +28,8 @@ app.get('/rest', (req, res) => {
 });
 
 // @route  POST '/rest'
-// @desc   Stage Two: issue n requests to restserver
-app.post('/rest', async (req, res) => {
+// @desc   Stage Two: issue n requests to restserver, and return the content with accept content type.
+app.post('/rest', (req, res) => {
     // Extract parameter from request body
     const numRequests = req.body.numRequests;
     let responseTime = [];
@@ -56,13 +53,18 @@ app.post('/rest', async (req, res) => {
     for(let i = 0; i < numRequests; i++) {
         requests.push(issueSingleRequest(responseTime));
     };
-    // Issue n requests in parallell
+    // Issue n requests in parallel
     Promise.all(requests).then(() => {
         let totalTime = responseTime.reduce((a, b)=> {return a + b;}, 0);
         // Test
         //console.log(responseTime);
-        res.set({'Content-Type': 'text/html'});
-        res.send(`I made ${numRequests} requests and it took ${totalTime} milliseconds`);
+        
+        if(req.accepts('application/json')) {
+            res.json({"numRequests": `${numRequests}`, "milliseconds": `${totalTime}` })
+        } else {
+            res.set({'Content-Type': 'text/html'});
+            res.send(`I made ${numRequests} requests and it took ${totalTime} milliseconds`);
+        }
     }).catch((error) => res.status(500).send('Server Error'))
     
 });
